@@ -19,9 +19,34 @@ const SET_APPROVAL_FOR_ALL_ABI = parseAbi([
 // Multicall3 — deployed at same address on all major EVM chains
 // https://github.com/mds1/multicall
 const MULTICALL3_ADDRESS = '0xcA11bde05977b3631167028862bE2a173976CA11' as const;
-const MULTICALL3_ABI = parseAbi([
-  'function aggregate3(tuple(address target, bool allowFailure, bytes callData)[] calldata calls) payable returns (tuple(bool success, bytes returnData)[] memory results)',
-]);
+const MULTICALL3_ABI = [
+  {
+    type: 'function',
+    name: 'aggregate3',
+    inputs: [
+      {
+        name: 'calls',
+        type: 'tuple[]',
+        components: [
+          { name: 'target', type: 'address' },
+          { name: 'allowFailure', type: 'bool' },
+          { name: 'callData', type: 'bytes' },
+        ],
+      },
+    ],
+    outputs: [
+      {
+        name: 'results',
+        type: 'tuple[]',
+        components: [
+          { name: 'success', type: 'bool' },
+          { name: 'returnData', type: 'bytes' },
+        ],
+      },
+    ],
+    stateMutability: 'payable',
+  },
+] as const;
 
 export interface RevokeState {
   txHash: `0x${string}` | undefined;
