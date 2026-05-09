@@ -9,11 +9,13 @@ interface ApprovalListProps {
 }
 
 export default function ApprovalList({ onRevoke, revokingKeys }: ApprovalListProps) {
-  const { approvals, selectedApprovals, selectAll } = useScanStore();
+  const approvals = useScanStore((s) => s.approvals);
+  const selectedApprovals = useScanStore((s) => s.selectedApprovals);
+  const selectAll = useScanStore((s) => s.selectAll);
 
-  const chainIds = Object.keys(approvals)
+  const chainIds = Object.keys(approvals ?? {})
     .map(Number)
-    .filter((id) => approvals[id]?.length > 0);
+    .filter((id) => (approvals ?? {})[id]?.length > 0);
 
   if (chainIds.length === 0) {
     return (
