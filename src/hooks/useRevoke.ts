@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { getWalletClient, switchChain } from 'wagmi/actions';
+import { getWalletClient, switchChain, waitForTransactionReceipt } from 'wagmi/actions';
 import { parseAbi, isAddress } from 'viem';
 import { useQueryClient } from '@tanstack/react-query';
 import type { ApprovalEntry } from '@/hooks/useMultichainScan';
@@ -198,7 +198,24 @@ export function useRevoke() {
           try {
             const txHash = await revokeSingleDirect(approval, client);
             setCurrentTxHash(txHash);
-            results.push({ approval, txHash });
+            setBatchProgress({
+              current: processed - 1,
+              total: approvals.length,
+              currentToken: `Confirming ${tokenLabel}…`,
+            });
+
+            // Wait for receipt to confirm nonce is consumed before next tx
+            const receipt = await waitForTransactionReceipt(wagmiConfig, {
+              hash: txHash,
+              chainId,
+              timeout: 60_000,
+            });
+
+            if (receipt.status === 'success') {
+              results.push({ approval, txHash });
+            } else {
+              results.push({ approval, error: new Error('Transaction reverted on-chain') });
+            }
           } catch (err) {
             results.push({ approval, error: new Error(parseErrorMessage(err)) });
           }

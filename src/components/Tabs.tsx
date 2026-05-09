@@ -14,7 +14,7 @@ const tabs: { id: TabId; label: string; icon: typeof ListChecks }[] = [
 
 export default function Tabs({ activeTab, onTabChange }: TabsProps) {
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-30 bg-brand-dark/95 backdrop-blur-md border-t border-white/5 safe-area-bottom">
+    <div className="fixed bottom-0 left-0 right-0 z-30 glass border-t border-white/[0.04] safe-area-bottom">
       <div className="flex">
         {tabs.map((tab) => {
           const Icon = tab.icon;
@@ -28,10 +28,10 @@ export default function Tabs({ activeTab, onTabChange }: TabsProps) {
               }`}
             >
               {active && (
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-brand-blue rounded-full" />
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-[3px] bg-gradient-to-r from-brand-blue to-brand-blue-light rounded-full" />
               )}
               <Icon className="w-5 h-5" strokeWidth={active ? 2.5 : 2} />
-              <span className={`text-[11px] font-semibold tracking-wide ${active ? 'text-brand-blue' : 'text-gray-600'}`}>
+              <span className={`text-[11px] font-bold tracking-wide ${active ? 'text-brand-blue' : 'text-gray-600'}`}>
                 {tab.label}
               </span>
             </button>

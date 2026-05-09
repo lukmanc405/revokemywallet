@@ -25,7 +25,6 @@ const CHAIN_MAP = new Map(SUPPORTED_CHAINS.map((c) => [c.id, c]));
 
 const MAX_UINT256 = '115792089237316195423570985008687907853269984665640564039457584007913129639935';
 
-/** Convert Zustand Approval type back to Moralis ApprovalEntry for revoke operations */
 function approvalToApprovalEntry(a: Approval): ApprovalEntry {
   return {
     chainId: a.chainId,
@@ -73,7 +72,6 @@ export default function App() {
   const { disconnect } = useDisconnect();
   const { reconnect } = useReconnect();
 
-  // Auto-reconnect when page becomes visible
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && !isConnected && !isConnecting && !isReconnecting) {
@@ -132,7 +130,6 @@ export default function App() {
         );
       }
 
-      // Store approvals in scan store — no entryMapRef needed
       const byChain = new Map<number, Approval[]>();
 
       for (const entry of allEntries) {
@@ -174,10 +171,8 @@ export default function App() {
     const currentApprovals = useScanStore.getState().approvals;
     if (selected.size === 0) return;
 
-    // Reconstruct ApprovalEntry from Zustand approvals — no entryMapRef needed
     const entriesToRevoke: ApprovalEntry[] = [];
     for (const key of selected) {
-      // Find the matching approval in the store
       for (const chainApprovals of Object.values(currentApprovals)) {
         for (const a of chainApprovals) {
           const aKey = getApprovalKey(a.chainId, a.tokenAddress, a.spender);
@@ -237,7 +232,6 @@ export default function App() {
         }
       }
 
-      // Remove successfully revoked approvals from the UI
       const revokedKeys = results
         .filter((r) => r.txHash)
         .map((r) => getApprovalKey(r.approval.chainId, r.approval.token_address, r.approval.approved_address));
@@ -265,7 +259,6 @@ export default function App() {
     }
   }, [revokeBatch, addHistory, clearSelection, haptic]);
 
-  // Get selected approvals for the confirm modal (reactive)
   const selectedApprovalList = useMemo(() => {
     const result: Approval[] = [];
     for (const chainApprovals of Object.values(approvals ?? {})) {
@@ -279,7 +272,6 @@ export default function App() {
     return result;
   }, [approvals, selectedApprovals]);
 
-  // Count approvals for selected chains only
   const visibleApprovalCount = useMemo(() => {
     const allChainIds = SUPPORTED_CHAINS.map((c) => c.id);
     const isAll = selectedChains.length === 0 || selectedChains.length === allChainIds.length;
@@ -299,14 +291,17 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-brand-dark text-white flex flex-col">
+      {/* Gradient accent line at very top */}
+      <div className="accent-line" />
+
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-brand-dark/90 backdrop-blur-lg border-b border-white/5">
-        <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-2.5">
-            <div className="p-1.5 rounded-lg bg-brand-blue/10">
-              <ShieldCheck className="w-5 h-5 text-brand-blue" />
+      <header className="sticky top-0 z-40 glass border-b border-white/[0.04]">
+        <div className="flex items-center justify-between px-5 py-3.5">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-brand-blue/10 border border-brand-blue/15">
+              <ShieldCheck className="w-5 h-5 text-brand-blue" strokeWidth={2} />
             </div>
-            <span className="font-extrabold text-base tracking-tight">
+            <span className="font-extrabold text-base tracking-[-0.03em]">
               <span className="text-white">revoke</span>
               <span className="text-brand-blue">my</span>
               <span className="text-brand-red">wallet</span>
@@ -314,16 +309,16 @@ export default function App() {
           </div>
 
           {isConnected && address && (
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-pill bg-brand-surface border border-white/5">
-                <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse-dot" />
-                <span className="text-gray-400 text-xs font-mono font-medium">
+            <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-pill bg-brand-surface border border-white/[0.04]">
+                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse-dot" />
+                <span className="text-gray-400 text-xs font-mono font-bold">
                   {truncateAddress(address)}
                 </span>
               </div>
               <button
                 onClick={() => disconnect()}
-                className="p-2 text-gray-600 hover:text-brand-red transition-colors rounded-lg hover:bg-brand-red/5"
+                className="p-2 text-gray-600 hover:text-brand-red transition-colors rounded-xl hover:bg-brand-red/10"
                 title="Disconnect"
               >
                 <LogOut className="w-4 h-4" />
@@ -334,21 +329,24 @@ export default function App() {
       </header>
 
       {/* Main */}
-      <main className="flex-1 px-4 py-4 pb-20 space-y-4 overflow-y-auto">
+      <main className="flex-1 px-5 py-4 pb-20 space-y-4 overflow-y-auto">
         {activeTab === 'approvals' && (
           <>
             <ChainSelector />
 
             {!isConnected ? (
-              <div className="flex flex-col items-center gap-5 py-10 animate-fade-in">
-                <div className="p-4 rounded-2xl bg-brand-surface border border-white/5">
-                  <Wallet className="w-10 h-10 text-brand-blue" />
+              <div className="flex flex-col items-center gap-6 py-12 animate-fade-in">
+                <div className="relative">
+                  <div className="absolute inset-0 w-20 h-20 rounded-2xl bg-brand-blue/15 blur-xl" />
+                  <div className="relative p-5 rounded-2xl bg-brand-surface border border-white/[0.04]">
+                    <Wallet className="w-10 h-10 text-brand-blue" strokeWidth={1.5} />
+                  </div>
                 </div>
                 <div className="text-center">
-                  <p className="text-white font-semibold text-sm mb-1">
+                  <p className="text-white font-extrabold text-base tracking-tight mb-1.5">
                     {isConnecting || isReconnecting ? 'Connecting…' : 'Connect Wallet'}
                   </p>
-                  <p className="text-gray-600 text-xs">
+                  <p className="text-gray-600 text-xs font-medium">
                     Scan and revoke token approvals across 8 chains
                   </p>
                 </div>
@@ -361,7 +359,7 @@ export default function App() {
                       localStorage.removeItem('wagmi.recentConnectorId');
                       window.location.reload();
                     }}
-                    className="text-xs text-gray-600 hover:text-brand-red underline transition-colors"
+                    className="text-xs text-gray-600 hover:text-brand-red underline transition-colors font-medium"
                   >
                     Stuck? Reset connection
                   </button>
@@ -370,13 +368,12 @@ export default function App() {
             ) : (
               <>
                 <ScanButton onClick={handleScan} />
-                {/* Summary bar */}
                 {visibleApprovalCount > 0 && (
                   <div className="flex items-center justify-between px-1 animate-fade-in">
-                    <span className="text-gray-500 text-xs font-medium">
+                    <span className="text-gray-400 text-xs font-bold tracking-tight">
                       {visibleApprovalCount} approval{visibleApprovalCount !== 1 ? 's' : ''} found
                     </span>
-                    <span className="text-gray-600 text-[11px] font-mono">
+                    <span className="text-gray-600 text-[11px] font-mono font-bold">
                       {selectedApprovals.size} selected
                     </span>
                   </div>

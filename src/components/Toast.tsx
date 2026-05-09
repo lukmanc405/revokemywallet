@@ -7,20 +7,21 @@ export function AppToaster() {
       position="top-center"
       toastOptions={{
         style: {
-          background: '#1E1E1E',
+          background: '#16161A',
           color: '#fff',
           border: '1px solid rgba(255,255,255,0.06)',
           borderRadius: '16px',
           fontSize: '13px',
-          fontFamily: 'Inter, system-ui, sans-serif',
-          fontWeight: '500',
+          fontFamily: '"Plus Jakarta Sans", system-ui, sans-serif',
+          fontWeight: '600',
           padding: '12px 16px',
+          letterSpacing: '-0.01em',
         },
         success: {
-          iconTheme: { primary: '#22c55e', secondary: '#1E1E1E' },
+          iconTheme: { primary: '#22c55e', secondary: '#16161A' },
         },
         error: {
-          iconTheme: { primary: '#FF3B30', secondary: '#1E1E1E' },
+          iconTheme: { primary: '#FF3B30', secondary: '#16161A' },
         },
       }}
     />

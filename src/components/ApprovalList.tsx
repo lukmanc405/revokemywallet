@@ -14,7 +14,6 @@ export default function ApprovalList({ onRevoke, revokingKeys }: ApprovalListPro
   const selectedChains = useScanStore((s) => s.selectedChains);
   const selectAll = useScanStore((s) => s.selectAll);
 
-  // Filter: only show approvals for selected chains
   const allChainIds = SUPPORTED_CHAINS.map((c) => c.id);
   const isAll = selectedChains.length === 0 || selectedChains.length === allChainIds.length;
 
@@ -23,20 +22,18 @@ export default function ApprovalList({ onRevoke, revokingKeys }: ApprovalListPro
     .filter((id) => {
       const hasApprovals = (approvals ?? {})[id]?.length > 0;
       if (!hasApprovals) return false;
-      // If all chains selected or none selected, show all
       if (isAll) return true;
-      // Otherwise only show selected chains
       return selectedChains.includes(id);
     });
 
   if (chainIds.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center animate-fade-in">
-        <div className="p-4 rounded-2xl bg-brand-surface border border-white/5 mb-4">
-          <ShieldCheck className="w-10 h-10 text-gray-700" />
+      <div className="flex flex-col items-center justify-center py-20 text-center animate-fade-in">
+        <div className="p-5 rounded-2xl bg-brand-surface border border-white/[0.04] mb-5">
+          <ShieldCheck className="w-12 h-12 text-gray-700" />
         </div>
-        <p className="text-gray-500 text-sm font-medium">No approvals found</p>
-        <p className="text-gray-700 text-xs mt-1">Connect wallet and scan to find token approvals</p>
+        <p className="text-gray-400 text-sm font-bold tracking-tight">No approvals found</p>
+        <p className="text-gray-700 text-xs mt-1.5 font-medium">Connect wallet and scan to find token approvals</p>
       </div>
     );
   }
@@ -52,16 +49,16 @@ export default function ApprovalList({ onRevoke, revokingKeys }: ApprovalListPro
 
         return (
           <div key={chainId} className="animate-slide-up">
-            <div className="flex items-center justify-between mb-2.5 px-1">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between mb-3 px-1">
+              <div className="flex items-center gap-2.5">
                 <span
-                  className="inline-block w-2 h-2 rounded-full"
+                  className="inline-block w-2.5 h-2.5 rounded-full"
                   style={{ backgroundColor: chain?.color ?? '#666' }}
                 />
-                <span className="text-white font-semibold text-sm">
+                <span className="text-white font-extrabold text-sm tracking-tight">
                   {chain?.emoji} {chain?.name ?? `Chain ${chainId}`}
                 </span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-gray-500 font-medium">
+                <span className="text-[10px] px-2.5 py-0.5 rounded-lg bg-white/5 text-gray-400 font-bold">
                   {items.length}
                 </span>
               </div>
@@ -71,7 +68,7 @@ export default function ApprovalList({ onRevoke, revokingKeys }: ApprovalListPro
                   checked={allSelected}
                   onChange={() => selectAll(chainId)}
                 />
-                <span className="font-medium">All</span>
+                <span className="font-bold">All</span>
               </label>
             </div>
             <div className="space-y-2">
