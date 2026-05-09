@@ -56,37 +56,21 @@ export default function App() {
   const { disconnect } = useDisconnect();
   const { reconnect } = useReconnect();
 
-  // Auto-reconnect when page becomes visible or focused (user returns from wallet app)
+  // Auto-reconnect when page becomes visible (user returns from wallet app)
   useEffect(() => {
-    const tryReconnect = () => {
-      if (!isConnected && !isConnecting && !isReconnecting) {
-        reconnect();
-      }
-    };
-
-    // Reconnect when page becomes visible
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        // Small delay to let wagmi restore from storage first
-        setTimeout(tryReconnect, 300);
+      if (document.visibilityState === 'visible' && !isConnected && !isConnecting && !isReconnecting) {
+        // Small delay to let wagmi restore from storage
+        setTimeout(() => {
+          if (!isConnected && !isConnecting && !isReconnecting) {
+            reconnect();
+          }
+        }, 500);
       }
-    };
-
-    // Reconnect when window is focused
-    const handleFocus = () => {
-      setTimeout(tryReconnect, 300);
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('focus', handleFocus);
-
-    // Also try reconnect on mount (for page reload after wallet redirect)
-    tryReconnect();
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleFocus);
-    };
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [isConnected, isConnecting, isReconnecting, reconnect]);
 
   const selectedChains = useScanStore((s) => s.selectedChains);
@@ -315,6 +299,21 @@ export default function App() {
                 </p>
                 {/* Reown AppKit button */}
                 <appkit-button />
+                {/* Reset button if stuck connecting */}
+                {(isConnecting || isReconnecting) && (
+                  <button
+                    onClick={() => {
+                      // Clear stale wagmi storage and reload
+                      localStorage.removeItem('revokemywallet-wagmi');
+                      localStorage.removeItem('wagmi.store');
+                      localStorage.removeItem('wagmi.recentConnectorId');
+                      window.location.reload();
+                    }}
+                    className="text-xs text-gray-500 hover:text-red-400 underline mt-2"
+                  >
+                    Stuck? Reset connection
+                  </button>
+                )}
               </div>
             ) : (
               <>

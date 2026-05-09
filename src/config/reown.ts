@@ -11,7 +11,6 @@ import {
   polygon,
   zkSync,
 } from 'viem/chains';
-import { reconnect } from '@wagmi/core';
 
 const projectId = import.meta.env.VITE_REOWN_PROJECT_ID as string;
 
@@ -39,9 +38,6 @@ export const wagmiAdapter = new WagmiAdapter({
 
 // Get the config from adapter
 export const wagmiConfig = wagmiAdapter.wagmiConfig;
-
-// Attempt reconnect on module load (restores session from localStorage)
-reconnect(wagmiConfig);
 
 export const appKit = createAppKit({
   adapters: [wagmiAdapter],
