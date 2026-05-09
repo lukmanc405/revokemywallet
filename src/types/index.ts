@@ -23,6 +23,7 @@ export interface RevokeHistoryItem {
   spender: string;
   timestamp: number;
   status: 'pending' | 'success' | 'failed';
+  errorMessage?: string;
   explorerUrl: string;
 }
 

@@ -16,7 +16,6 @@ const SET_APPROVAL_FOR_ALL_ABI = parseAbi([
 ]);
 
 // Multicall3 — deployed at same address on all major EVM chains
-// https://github.com/mds1/multicall
 const MULTICALL3_ADDRESS = '0xcA11bde05977b3631167028862bE2a173976CA11' as const;
 const MULTICALL3_ABI = [
   {
@@ -98,9 +97,60 @@ function encodeRevokeCall(approval: ApprovalEntry): { target: `0x${string}`; all
 
 // Get a fresh wallet client for a specific chain (handles chain switching)
 async function getClientForChain(chainId: number) {
-  // getWalletClient with chainId switches chain if needed and returns fresh client
   const client = await getWalletClient(wagmiConfig, { chainId });
+  // Verify we're on the right chain
+  if (client.chain?.id !== chainId) {
+    throw new Error(
+      `Chain mismatch: wallet is on chain ${client.chain?.id} but expected ${chainId}. Please switch your wallet to the correct network.`
+    );
+  }
   return client;
+}
+
+// Parse error into human-readable message
+function parseErrorMessage(err: unknown): string {
+  if (err instanceof Error) {
+    const msg = err.message.toLowerCase();
+    if (msg.includes('user rejected') || msg.includes('user denied') || msg.includes('rejected')) {
+      return 'Transaction rejected by user';
+    }
+    if (msg.includes('insufficient funds') || msg.includes('insufficient balance')) {
+      return 'Insufficient funds for gas';
+    }
+    if (msg.includes('nonce')) {
+      return 'Nonce error — try again';
+    }
+    if (msg.includes('chain mismatch') || msg.includes('wrong network')) {
+      return err.message; // Use the detailed message
+    }
+    if (msg.includes('internal rpc error') || msg.includes('execution reverted')) {
+      return 'Transaction would revert — token may not support this operation';
+    }
+    // Truncate long messages
+    return err.message.length > 120 ? err.message.slice(0, 120) + '…' : err.message;
+  }
+  return String(err);
+}
+
+// Revoke a single approval via direct contract call
+async function revokeSingleDirect(
+  approval: ApprovalEntry,
+  client: Awaited<ReturnType<typeof getClientForChain>>
+): Promise<`0x${string}`> {
+  if (approval.token_type === 'ERC20') {
+    return client.writeContract({
+      address: approval.token_address as `0x${string}`,
+      abi: ERC20_ABI,
+      functionName: 'approve',
+      args: [approval.approved_address as `0x${string}`, 0n],
+    });
+  }
+  return client.writeContract({
+    address: approval.token_address as `0x${string}`,
+    abi: SET_APPROVAL_FOR_ALL_ABI,
+    functionName: 'setApprovalForAll',
+    args: [approval.approved_address as `0x${string}`, false],
+  });
 }
 
 export function useRevoke() {
@@ -124,27 +174,8 @@ export function useRevoke() {
       setIsProcessing(true);
 
       try {
-        // Get fresh client for this chain (handles switching)
         const client = await getClientForChain(approval.chainId);
-
-        let txHash: `0x${string}`;
-
-        if (approval.token_type === 'ERC20') {
-          txHash = await client.writeContract({
-            address: approval.token_address as `0x${string}`,
-            abi: ERC20_ABI,
-            functionName: 'approve',
-            args: [approval.approved_address as `0x${string}`, 0n],
-          });
-        } else {
-          txHash = await client.writeContract({
-            address: approval.token_address as `0x${string}`,
-            abi: SET_APPROVAL_FOR_ALL_ABI,
-            functionName: 'setApprovalForAll',
-            args: [approval.approved_address as `0x${string}`, false],
-          });
-        }
-
+        const txHash = await revokeSingleDirect(approval, client);
         setCurrentTxHash(txHash);
         setIsProcessing(false);
         queryClient.invalidateQueries({ queryKey: ['multichain-scan'] });
@@ -177,8 +208,6 @@ export function useRevoke() {
       const chainEntries = [...byChain.entries()];
       setBatchProgress({ current: 0, total: chainEntries.length, currentChain: '' });
 
-      console.log(`[Multicall3] Starting batch revoke: ${approvals.length} approvals across ${chainEntries.length} chains`);
-
       const results: {
         approval: ApprovalEntry;
         txHash?: `0x${string}`;
@@ -191,58 +220,57 @@ export function useRevoke() {
         const chainName = getChainName(chainId);
         setBatchProgress({ current: i + 1, total: chainEntries.length, currentChain: chainName });
 
-        console.log(`[Multicall3] Processing chain ${chainId} (${chainName}): ${chainApprovals.length} approvals`);
-
         try {
-          // Get fresh wallet client for this chain (switches if needed)
           const client = await getClientForChain(chainId);
-          console.log(`[Multicall3] Got client for chain ${client.chain?.id} (wanted ${chainId})`);
 
           if (chainApprovals.length === 1) {
             // Single approval — use direct call
             const approval = chainApprovals[0];
             try {
-              const txHash = await client.writeContract({
-                address: approval.token_address as `0x${string}`,
-                abi: approval.token_type === 'ERC20' ? ERC20_ABI : SET_APPROVAL_FOR_ALL_ABI,
-                functionName: approval.token_type === 'ERC20' ? 'approve' : 'setApprovalForAll',
-                args: approval.token_type === 'ERC20'
-                  ? [approval.approved_address as `0x${string}`, 0n]
-                  : [approval.approved_address as `0x${string}`, false],
-              });
-              console.log(`[Multicall3] Single revoke tx: ${txHash}`);
+              const txHash = await revokeSingleDirect(approval, client);
               setCurrentTxHash(txHash);
               results.push({ approval, txHash });
             } catch (err) {
-              const error = err instanceof Error ? err : new Error(String(err));
+              const error = new Error(parseErrorMessage(err));
               results.push({ approval, error });
             }
           } else {
-            // Multiple approvals on same chain — batch via Multicall3
+            // Multiple approvals on same chain — try Multicall3 first, fallback to individual
             const calls = chainApprovals.map(encodeRevokeCall);
 
-            console.log(`[Multicall3] Batching ${calls.length} calls via aggregate3 on chain ${chainId}`);
-            console.log(`[Multicall3] Target: ${MULTICALL3_ADDRESS}`);
-
-            const txHash = await client.writeContract({
-              address: MULTICALL3_ADDRESS,
-              abi: MULTICALL3_ABI,
-              functionName: 'aggregate3',
-              args: [calls],
-            });
-
-            console.log(`[Multicall3] ✅ Batch tx sent: ${txHash}`);
-            setCurrentTxHash(txHash);
-
-            for (const approval of chainApprovals) {
-              results.push({ approval, txHash });
+            try {
+              const txHash = await client.writeContract({
+                address: MULTICALL3_ADDRESS,
+                abi: MULTICALL3_ABI,
+                functionName: 'aggregate3',
+                args: [calls],
+              });
+              setCurrentTxHash(txHash);
+              for (const approval of chainApprovals) {
+                results.push({ approval, txHash });
+              }
+            } catch (multicallErr) {
+              // Multicall3 failed — fallback to individual calls
+              for (let j = 0; j < chainApprovals.length; j++) {
+                const approval = chainApprovals[j];
+                try {
+                  // Need fresh client for each call in case chain state changed
+                  const freshClient = j === 0 ? client : await getClientForChain(chainId);
+                  const txHash = await revokeSingleDirect(approval, freshClient);
+                  setCurrentTxHash(txHash);
+                  results.push({ approval, txHash });
+                } catch (individualErr) {
+                  const error = new Error(parseErrorMessage(individualErr));
+                  results.push({ approval, error });
+                }
+              }
             }
           }
         } catch (err) {
-          console.error(`[Multicall3] ❌ Error on chain ${chainId}:`, err);
-          const error = err instanceof Error ? err : new Error(String(err));
+          // Chain-level error (e.g., chain switch failed)
+          const errorMsg = parseErrorMessage(err);
           for (const approval of chainApprovals) {
-            results.push({ approval, error });
+            results.push({ approval, error: new Error(errorMsg) });
           }
         }
 
@@ -256,7 +284,6 @@ export function useRevoke() {
       // Final query invalidation
       queryClient.invalidateQueries({ queryKey: ['multichain-scan'] });
 
-      console.log(`[Multicall3] Batch complete: ${results.filter(r => r.txHash).length}/${results.length} succeeded`);
       return results;
     },
     [queryClient]

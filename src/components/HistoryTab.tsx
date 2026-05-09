@@ -84,6 +84,11 @@ export default function HistoryTab() {
             <p className="text-gray-700 text-[11px] mt-2 font-mono">
               {new Date(item.timestamp).toLocaleString()}
             </p>
+            {item.status === 'failed' && item.errorMessage && (
+              <p className="text-brand-red/80 text-[11px] mt-1.5 leading-relaxed truncate">
+                {item.errorMessage}
+              </p>
+            )}
           </div>
         );
       })}

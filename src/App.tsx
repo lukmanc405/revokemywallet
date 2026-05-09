@@ -197,6 +197,9 @@ export default function App() {
       const results = await revokeBatch({ approvals: entriesToRevoke });
 
       let successCount = 0;
+      let failCount = 0;
+      let firstErrorMsg = '';
+
       for (const result of results) {
         const chain = CHAIN_MAP.get(result.approval.chainId);
 
@@ -215,15 +218,9 @@ export default function App() {
               ? getExplorerTxUrl(chain.explorerUrl, result.txHash)
               : `https://etherscan.io/tx/${result.txHash}`,
           });
-
-          sendToBot({
-            action: 'revoke_success',
-            txHash: result.txHash,
-            chainId: result.approval.chainId,
-            tokenSymbol: result.approval.token_symbol,
-            spender: result.approval.approved_address,
-          });
         } else if (result.error) {
+          failCount++;
+          if (!firstErrorMsg) firstErrorMsg = result.error.message;
           addHistory({
             txHash: `failed-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
             chainId: result.approval.chainId,
@@ -233,6 +230,7 @@ export default function App() {
             spender: result.approval.approved_address,
             timestamp: Date.now(),
             status: 'failed',
+            errorMessage: result.error.message,
             explorerUrl: '',
           });
         }
@@ -241,15 +239,22 @@ export default function App() {
       clearSelection();
       setShowConfirmModal(false);
 
-      if (successCount > 0) {
+      if (successCount > 0 && failCount === 0) {
         showSuccess(`Successfully revoked ${successCount} approval${successCount > 1 ? 's' : ''}`);
         haptic('success');
+      } else if (successCount > 0 && failCount > 0) {
+        showSuccess(`${successCount} revoked, ${failCount} failed: ${firstErrorMsg}`);
+        haptic('warning');
+      } else if (failCount > 0) {
+        showError(`All ${failCount} revokes failed: ${firstErrorMsg}`);
+        haptic('error');
       }
-    } catch {
-      showError('Revoke failed. Please try again.');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      showError(`Revoke failed: ${msg}`);
       haptic('error');
     }
-  }, [revokeBatch, addHistory, sendToBot, clearSelection, haptic]);
+  }, [revokeBatch, addHistory, clearSelection, haptic]);
 
   // Get selected approvals for the confirm modal (reactive)
   const selectedApprovalList = useMemo(() => {
