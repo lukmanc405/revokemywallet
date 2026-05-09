@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { getWalletClient } from 'wagmi/actions';
+import { getWalletClient, switchChain } from 'wagmi/actions';
 import { parseAbi, encodeFunctionData, isAddress } from 'viem';
 import { useQueryClient } from '@tanstack/react-query';
 import type { ApprovalEntry } from '@/hooks/useMultichainScan';
@@ -95,13 +95,16 @@ function encodeRevokeCall(approval: ApprovalEntry): { target: `0x${string}`; all
   };
 }
 
-// Get a fresh wallet client for a specific chain (handles chain switching)
+// Switch wallet chain and get a fresh wallet client
 async function getClientForChain(chainId: number) {
+  // Explicitly switch the wallet to the target chain first
+  await switchChain(wagmiConfig, { chainId });
+  // Now get the wallet client for the correct chain
   const client = await getWalletClient(wagmiConfig, { chainId });
   // Verify we're on the right chain
   if (client.chain?.id !== chainId) {
     throw new Error(
-      `Chain mismatch: wallet is on chain ${client.chain?.id} but expected ${chainId}. Please switch your wallet to the correct network.`
+      `Chain mismatch after switch: wallet is on chain ${client.chain?.id} but expected ${chainId}. Please switch your wallet to the correct network manually.`
     );
   }
   return client;
