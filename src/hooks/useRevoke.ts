@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { getWalletClient, switchChain } from 'wagmi/actions';
-import { parseAbi, encodeFunctionData, isAddress } from 'viem';
+import { parseAbi, isAddress } from 'viem';
 import { useQueryClient } from '@tanstack/react-query';
 import type { ApprovalEntry } from '@/hooks/useMultichainScan';
 import { wagmiConfig } from '@/config/reown';
@@ -14,37 +14,6 @@ const ERC20_ABI = parseAbi([
 const SET_APPROVAL_FOR_ALL_ABI = parseAbi([
   'function setApprovalForAll(address operator, bool approved)',
 ]);
-
-// Multicall3 — deployed at same address on all major EVM chains
-const MULTICALL3_ADDRESS = '0xcA11bde05977b3631167028862bE2a173976CA11' as const;
-const MULTICALL3_ABI = [
-  {
-    type: 'function',
-    name: 'aggregate3',
-    inputs: [
-      {
-        name: 'calls',
-        type: 'tuple[]',
-        components: [
-          { name: 'target', type: 'address' },
-          { name: 'allowFailure', type: 'bool' },
-          { name: 'callData', type: 'bytes' },
-        ],
-      },
-    ],
-    outputs: [
-      {
-        name: 'results',
-        type: 'tuple[]',
-        components: [
-          { name: 'success', type: 'bool' },
-          { name: 'returnData', type: 'bytes' },
-        ],
-      },
-    ],
-    stateMutability: 'payable',
-  },
-] as const;
 
 export interface RevokeState {
   txHash: `0x${string}` | undefined;
@@ -70,41 +39,13 @@ function validateAddress(address: string, label: string): `0x${string}` {
   return address as `0x${string}`;
 }
 
-// Encode a single revoke call to calldata
-function encodeRevokeCall(approval: ApprovalEntry): { target: `0x${string}`; allowFailure: boolean; callData: `0x${string}` } {
-  if (approval.token_type === 'ERC20') {
-    return {
-      target: validateAddress(approval.token_address, 'token'),
-      allowFailure: true,
-      callData: encodeFunctionData({
-        abi: ERC20_ABI,
-        functionName: 'approve',
-        args: [approval.approved_address as `0x${string}`, 0n],
-      }),
-    };
-  }
-  // ERC721 / ERC1155
-  return {
-    target: validateAddress(approval.token_address, 'token'),
-    allowFailure: true,
-    callData: encodeFunctionData({
-      abi: SET_APPROVAL_FOR_ALL_ABI,
-      functionName: 'setApprovalForAll',
-      args: [approval.approved_address as `0x${string}`, false],
-    }),
-  };
-}
-
 // Switch wallet chain and get a fresh wallet client
 async function getClientForChain(chainId: number) {
-  // Explicitly switch the wallet to the target chain first
   await switchChain(wagmiConfig, { chainId });
-  // Now get the wallet client for the correct chain
   const client = await getWalletClient(wagmiConfig, { chainId });
-  // Verify we're on the right chain
   if (client.chain?.id !== chainId) {
     throw new Error(
-      `Chain mismatch after switch: wallet is on chain ${client.chain?.id} but expected ${chainId}. Please switch your wallet to the correct network manually.`
+      `Chain mismatch: wallet on chain ${client.chain?.id}, expected ${chainId}. Switch manually.`
     );
   }
   return client;
@@ -124,12 +65,11 @@ function parseErrorMessage(err: unknown): string {
       return 'Nonce error — try again';
     }
     if (msg.includes('chain mismatch') || msg.includes('wrong network')) {
-      return err.message; // Use the detailed message
+      return err.message;
     }
     if (msg.includes('internal rpc error') || msg.includes('execution reverted')) {
-      return 'Transaction would revert — token may not support this operation';
+      return 'Transaction would revert';
     }
-    // Truncate long messages
     return err.message.length > 120 ? err.message.slice(0, 120) + '…' : err.message;
   }
   return String(err);
@@ -140,19 +80,22 @@ async function revokeSingleDirect(
   approval: ApprovalEntry,
   client: Awaited<ReturnType<typeof getClientForChain>>
 ): Promise<`0x${string}`> {
+  const tokenAddr = validateAddress(approval.token_address, 'token');
+  const spenderAddr = approval.approved_address as `0x${string}`;
+
   if (approval.token_type === 'ERC20') {
     return client.writeContract({
-      address: approval.token_address as `0x${string}`,
+      address: tokenAddr,
       abi: ERC20_ABI,
       functionName: 'approve',
-      args: [approval.approved_address as `0x${string}`, 0n],
+      args: [spenderAddr, 0n],
     });
   }
   return client.writeContract({
-    address: approval.token_address as `0x${string}`,
+    address: tokenAddr,
     abi: SET_APPROVAL_FOR_ALL_ABI,
     functionName: 'setApprovalForAll',
-    args: [approval.approved_address as `0x${string}`, false],
+    args: [spenderAddr, false],
   });
 }
 
@@ -163,7 +106,11 @@ export function useRevoke() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [revokeError, setRevokeError] = useState<Error | null>(null);
   const [isBatchProcessing, setIsBatchProcessing] = useState(false);
-  const [batchProgress, setBatchProgress] = useState<{ current: number; total: number; currentChain: string }>({ current: 0, total: 0, currentChain: '' });
+  const [batchProgress, setBatchProgress] = useState<{
+    current: number;
+    total: number;
+    currentToken: string;
+  }>({ current: 0, total: 0, currentToken: '' });
   const [batchResults, setBatchResults] = useState<
     { approval: ApprovalEntry; txHash?: `0x${string}`; error?: Error }[]
   >([]);
@@ -171,7 +118,6 @@ export function useRevoke() {
   const revokeSingle = useCallback(
     async (params: RevokeSingleParams): Promise<`0x${string}` | undefined> => {
       const { approval } = params;
-
       setRevokeError(null);
       setCurrentTxHash(undefined);
       setIsProcessing(true);
@@ -198,9 +144,9 @@ export function useRevoke() {
       const { approvals } = params;
       setIsBatchProcessing(true);
       setBatchResults([]);
-      setBatchProgress({ current: 0, total: 0, currentChain: '' });
+      setBatchProgress({ current: 0, total: approvals.length, currentToken: '' });
 
-      // Group by chainId
+      // Group by chainId to minimize chain switches
       const byChain = new Map<number, ApprovalEntry[]>();
       for (const approval of approvals) {
         const existing = byChain.get(approval.chainId) ?? [];
@@ -208,83 +154,62 @@ export function useRevoke() {
         byChain.set(approval.chainId, existing);
       }
 
-      const chainEntries = [...byChain.entries()];
-      setBatchProgress({ current: 0, total: chainEntries.length, currentChain: '' });
-
       const results: {
         approval: ApprovalEntry;
         txHash?: `0x${string}`;
         error?: Error;
       }[] = [];
 
-      // Process each chain — one Multicall3 tx per chain
-      for (let i = 0; i < chainEntries.length; i++) {
-        const [chainId, chainApprovals] = chainEntries[i];
-        const chainName = getChainName(chainId);
-        setBatchProgress({ current: i + 1, total: chainEntries.length, currentChain: chainName });
+      let processed = 0;
 
+      // Process each chain — switch once, then revoke all on that chain
+      for (const [chainId, chainApprovals] of byChain) {
+        setBatchProgress({
+          current: processed,
+          total: approvals.length,
+          currentToken: `Switching to ${getChainName(chainId)}…`,
+        });
+
+        let client;
         try {
-          const client = await getClientForChain(chainId);
-
-          if (chainApprovals.length === 1) {
-            // Single approval — use direct call
-            const approval = chainApprovals[0];
-            try {
-              const txHash = await revokeSingleDirect(approval, client);
-              setCurrentTxHash(txHash);
-              results.push({ approval, txHash });
-            } catch (err) {
-              const error = new Error(parseErrorMessage(err));
-              results.push({ approval, error });
-            }
-          } else {
-            // Multiple approvals on same chain — try Multicall3 first, fallback to individual
-            const calls = chainApprovals.map(encodeRevokeCall);
-
-            try {
-              const txHash = await client.writeContract({
-                address: MULTICALL3_ADDRESS,
-                abi: MULTICALL3_ABI,
-                functionName: 'aggregate3',
-                args: [calls],
-              });
-              setCurrentTxHash(txHash);
-              for (const approval of chainApprovals) {
-                results.push({ approval, txHash });
-              }
-            } catch (multicallErr) {
-              // Multicall3 failed — fallback to individual calls
-              for (let j = 0; j < chainApprovals.length; j++) {
-                const approval = chainApprovals[j];
-                try {
-                  // Need fresh client for each call in case chain state changed
-                  const freshClient = j === 0 ? client : await getClientForChain(chainId);
-                  const txHash = await revokeSingleDirect(approval, freshClient);
-                  setCurrentTxHash(txHash);
-                  results.push({ approval, txHash });
-                } catch (individualErr) {
-                  const error = new Error(parseErrorMessage(individualErr));
-                  results.push({ approval, error });
-                }
-              }
-            }
-          }
+          client = await getClientForChain(chainId);
         } catch (err) {
-          // Chain-level error (e.g., chain switch failed)
+          // Chain switch failed — mark all on this chain as failed
           const errorMsg = parseErrorMessage(err);
           for (const approval of chainApprovals) {
+            processed++;
             results.push({ approval, error: new Error(errorMsg) });
+            setBatchResults([...results]);
+            setBatchProgress({ current: processed, total: approvals.length, currentToken: '' });
           }
+          continue;
         }
 
-        // Update results progressively
-        setBatchResults([...results]);
+        // Revoke each approval individually — wallet shows clear popup per tx
+        for (const approval of chainApprovals) {
+          processed++;
+          const tokenLabel = approval.token_symbol || approval.token_name || 'Unknown';
+          setBatchProgress({
+            current: processed - 1,
+            total: approvals.length,
+            currentToken: `${tokenLabel} on ${getChainName(chainId)}`,
+          });
+
+          try {
+            const txHash = await revokeSingleDirect(approval, client);
+            setCurrentTxHash(txHash);
+            results.push({ approval, txHash });
+          } catch (err) {
+            results.push({ approval, error: new Error(parseErrorMessage(err)) });
+          }
+
+          // Update results after each individual revoke
+          setBatchResults([...results]);
+        }
       }
 
       setIsBatchProcessing(false);
-      setBatchProgress({ current: 0, total: 0, currentChain: '' });
-
-      // Final query invalidation
+      setBatchProgress({ current: 0, total: 0, currentToken: '' });
       queryClient.invalidateQueries({ queryKey: ['multichain-scan'] });
 
       return results;

@@ -14,6 +14,7 @@ interface ScanState {
   setIsScanning: (scanning: boolean) => void;
   setScanProgress: (current: number, total: number) => void;
   setSelectedChains: (chains: number[]) => void;
+  removeApprovals: (keys: string[]) => void;
   reset: () => void;
 }
 
@@ -53,6 +54,24 @@ export const useScanStore = create<ScanState>((set) => ({
   setIsScanning: (scanning) => set({ isScanning: scanning }),
   setScanProgress: (current, total) => set({ scanProgress: { current, total } }),
   setSelectedChains: (chains) => set({ selectedChains: chains }),
+  removeApprovals: (keys) =>
+    set((state) => {
+      const keysSet = new Set(keys);
+      const newApprovals: Record<number, Approval[]> = {};
+      for (const [chainIdStr, chainApprovals] of Object.entries(state.approvals)) {
+        const filtered = chainApprovals.filter(
+          (a) => !keysSet.has(getApprovalKey(a.chainId, a.tokenAddress, a.spender))
+        );
+        if (filtered.length > 0) {
+          newApprovals[Number(chainIdStr)] = filtered;
+        }
+      }
+      const newSelected = new Set(state.selectedApprovals);
+      for (const key of keys) {
+        newSelected.delete(key);
+      }
+      return { approvals: newApprovals, selectedApprovals: newSelected };
+    }),
   reset: () =>
     set({
       approvals: {},

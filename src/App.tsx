@@ -94,6 +94,7 @@ export default function App() {
   const selectedApprovals = useScanStore((s) => s.selectedApprovals);
   const setApprovals = useScanStore((s) => s.setApprovals);
   const clearSelection = useScanStore((s) => s.clearSelection);
+  const removeApprovals = useScanStore((s) => s.removeApprovals);
   const setIsScanning = useScanStore((s) => s.setIsScanning);
   const setScanProgress = useScanStore((s) => s.setScanProgress);
   const addHistory = useHistoryStore((s) => s.addHistory);
@@ -234,6 +235,14 @@ export default function App() {
             explorerUrl: '',
           });
         }
+      }
+
+      // Remove successfully revoked approvals from the UI
+      const revokedKeys = results
+        .filter((r) => r.txHash)
+        .map((r) => getApprovalKey(r.approval.chainId, r.approval.token_address, r.approval.approved_address));
+      if (revokedKeys.length > 0) {
+        removeApprovals(revokedKeys);
       }
 
       clearSelection();

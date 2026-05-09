@@ -5,7 +5,7 @@ import { SUPPORTED_CHAINS, truncateAddress } from '../types';
 interface BatchProgress {
   current: number;
   total: number;
-  currentChain: string;
+  currentToken: string;
 }
 
 interface ConfirmModalProps {
@@ -36,7 +36,6 @@ export default function ConfirmModal({
   for (const a of approvals) {
     (grouped[a.chainId] ??= []).push(a);
   }
-  const chainCount = Object.keys(grouped).length;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
@@ -56,16 +55,20 @@ export default function ConfirmModal({
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
-          {/* Batch progress */}
+          {/* Batch progress — per approval */}
           {isRevoking && batchProgress && batchProgress.total > 0 && (
             <div className="bg-brand-blue/5 border border-brand-blue/15 rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-3">
+              <div className="flex items-center gap-2 mb-1">
                 <Loader2 className="w-4 h-4 text-brand-blue animate-spin" />
                 <span className="text-brand-blue text-sm font-semibold">
-                  Chain {batchProgress.current}/{batchProgress.total}
-                  {batchProgress.currentChain && ` — ${batchProgress.currentChain}`}
+                  {batchProgress.current}/{batchProgress.total} approvals
                 </span>
               </div>
+              {batchProgress.currentToken && (
+                <p className="text-brand-blue/70 text-xs mb-3 truncate">
+                  Revoking {batchProgress.currentToken}…
+                </p>
+              )}
               <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
                 <div
                   className="bg-brand-blue h-1.5 rounded-full transition-all duration-700 ease-out"
@@ -116,9 +119,7 @@ export default function ConfirmModal({
           {!isRevoking && (
             <div className="bg-brand-yellow/5 border border-brand-yellow/15 rounded-xl p-3">
               <p className="text-brand-yellow/80 text-xs font-medium">
-                ⚡ {chainCount > 1
-                  ? `${chainCount} transactions via Multicall3 (1 per chain)`
-                  : `Batched into 1 transaction via Multicall3`}
+                ⚡ {approvals.length} individual transaction{approvals.length > 1 ? 's' : ''} — each one shows exactly what you're revoking
               </p>
             </div>
           )}
