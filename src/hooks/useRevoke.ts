@@ -64,8 +64,16 @@ export interface BatchRevokeParams {
   approvals: ApprovalEntry[];
 }
 
+// Validate and return a checksummed address
+function validateAddress(address: string, label: string): `0x${string}` {
+  if (!isAddress(address)) {
+    throw new Error(`Invalid ${label} address: ${address}`);
+  }
+  return address as `0x${string}`;
+}
+
 // Encode a single revoke call to calldata
-function encodeRevokeCall(approval: ApprovalEntry): { target: string; allowFailure: boolean; callData: `0x${string}` } {
+function encodeRevokeCall(approval: ApprovalEntry): { target: `0x${string}`; allowFailure: boolean; callData: `0x${string}` } {
   if (approval.token_type === 'ERC20') {
     return {
       target: validateAddress(approval.token_address, 'token'),
