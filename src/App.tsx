@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useMemo } from 'react';
-import { useAccount } from 'wagmi';
+import { useAccount, useDisconnect } from 'wagmi';
 import type { Approval } from './types';
-import { SUPPORTED_CHAINS, getApprovalKey, getExplorerTxUrl } from './types';
+import { SUPPORTED_CHAINS, getApprovalKey, getExplorerTxUrl, truncateAddress } from './types';
 import { useScanStore } from './stores/scanStore';
 import { useHistoryStore } from './stores/historyStore';
 import { useMultichainScan } from './hooks/useMultichainScan';
@@ -9,8 +9,6 @@ import type { ApprovalEntry } from './hooks/useMultichainScan';
 import { useRevoke } from './hooks/useRevoke';
 import { useTelegramWebApp } from './hooks/useTelegramWebApp';
 import SplashScreen from './components/SplashScreen';
-import Header from './components/Header';
-import WalletConnect from './components/WalletConnect';
 import ChainSelector from './components/ChainSelector';
 import ScanButton from './components/ScanButton';
 import ApprovalList from './components/ApprovalList';
@@ -20,6 +18,7 @@ import ConfirmModal from './components/ConfirmModal';
 import HistoryTab from './components/HistoryTab';
 import Tabs from './components/Tabs';
 import { showSuccess, showError } from './components/Toast';
+import { ShieldCheck, Wallet, LogOut } from 'lucide-react';
 
 const ALL_CHAIN_IDS = SUPPORTED_CHAINS.map((c) => c.id);
 const CHAIN_MAP = new Map(SUPPORTED_CHAINS.map((c) => [c.id, c]));
@@ -45,11 +44,17 @@ function approvalEntryToApproval(entry: ApprovalEntry): Approval {
 }
 
 export default function App() {
-  const [showSplash, setShowSplash] = useState(true);
+  const [showSplash, setShowSplash] = useState(() => {
+    // Persist splash dismissed state
+    return !localStorage.getItem('revokemywallet_splash_dismissed');
+  });
   const [activeTab, setActiveTab] = useState<'approvals' | 'history'>('approvals');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
-  const { address, isConnected } = useAccount();
+  // Use wagmi's useAccount as the SINGLE source of truth for wallet state
+  const { address, isConnected, isConnecting, isReconnecting } = useAccount();
+  const { disconnect } = useDisconnect();
+
   const selectedChains = useScanStore((s) => s.selectedChains);
   const approvals = useScanStore((s) => s.approvals);
   const selectedApprovals = useScanStore((s) => s.selectedApprovals);
@@ -67,6 +72,11 @@ export default function App() {
   const chainIdsToScan = selectedChains.length > 0 ? selectedChains : ALL_CHAIN_IDS;
 
   const { refetch } = useMultichainScan(address, chainIdsToScan);
+
+  const handleDismissSplash = useCallback(() => {
+    setShowSplash(false);
+    localStorage.setItem('revokemywallet_splash_dismissed', '1');
+  }, []);
 
   const handleScan = useCallback(async () => {
     if (!address) return;
@@ -221,13 +231,39 @@ export default function App() {
     return result;
   }, [approvals, selectedApprovals]);
 
+  // Show splash screen
   if (showSplash) {
-    return <SplashScreen onGetStarted={() => setShowSplash(false)} />;
+    return <SplashScreen onGetStarted={handleDismissSplash} />;
   }
 
   return (
     <div className="min-h-screen bg-[#0F0F0F] text-white flex flex-col">
-      <Header />
+      {/* Header */}
+      <header className="sticky top-0 z-40 bg-[#0F0F0F]/95 backdrop-blur-sm border-b border-gray-800">
+        <div className="flex items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-6 h-6 text-purple-500" />
+            <span className="text-white font-bold text-lg tracking-tight">
+              revokemywallet
+            </span>
+          </div>
+
+          {isConnected && address && (
+            <div className="flex items-center gap-2">
+              <span className="text-gray-400 text-sm font-mono">
+                {truncateAddress(address)}
+              </span>
+              <button
+                onClick={() => disconnect()}
+                className="p-2 text-gray-400 hover:text-red-400 transition-colors"
+                title="Disconnect"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+        </div>
+      </header>
 
       <main className="flex-1 px-4 py-4 pb-20 space-y-4 overflow-y-auto">
         {activeTab === 'approvals' && (
@@ -235,7 +271,17 @@ export default function App() {
             <ChainSelector />
 
             {!isConnected ? (
-              <WalletConnect />
+              /* Wallet Connect Section */
+              <div className="flex flex-col items-center gap-4 py-8">
+                <Wallet className="w-12 h-12 text-purple-500 mb-2" />
+                <p className="text-gray-400 text-sm">
+                  {isConnecting || isReconnecting
+                    ? 'Connecting...'
+                    : 'Connect your wallet to scan token approvals'}
+                </p>
+                {/* Reown AppKit button */}
+                <appkit-button />
+              </div>
             ) : (
               <>
                 <ScanButton onClick={handleScan} />
