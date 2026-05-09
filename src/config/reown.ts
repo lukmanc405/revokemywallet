@@ -11,7 +11,7 @@ import {
   polygon,
   zkSync,
 } from 'viem/chains';
-import { cookieStorage, createStorage } from 'wagmi';
+import { reconnect } from '@wagmi/core';
 
 const projectId = import.meta.env.VITE_REOWN_PROJECT_ID as string;
 
@@ -30,18 +30,18 @@ export const networks: [AppKitNetwork, ...AppKitNetwork[]] = [
   zkSync,
 ];
 
-// Use cookie + localStorage for better persistence in Telegram WebView
-const storage = createStorage({
-  storage: typeof window !== 'undefined' ? localStorage : cookieStorage,
-  key: 'revokemywallet-wagmi',
-});
-
+// Create WagmiAdapter (this creates internal wagmi config with WalletConnect + Injected connectors)
 export const wagmiAdapter = new WagmiAdapter({
   networks,
   projectId,
   ssr: false,
-  storage,
 });
+
+// Get the config from adapter
+export const wagmiConfig = wagmiAdapter.wagmiConfig;
+
+// Attempt reconnect on module load (restores session from localStorage)
+reconnect(wagmiConfig);
 
 export const appKit = createAppKit({
   adapters: [wagmiAdapter],
@@ -61,8 +61,4 @@ export const appKit = createAppKit({
   enableWalletConnect: true,
   enableInjected: true,
   enableEIP6963: true,
-  // Important for Telegram Mini Apps — reconnect on page visibility change
-  featuredWalletIds: [],
 });
-
-export const wagmiConfig = wagmiAdapter.wagmiConfig;

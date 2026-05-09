@@ -56,18 +56,38 @@ export default function App() {
   const { disconnect } = useDisconnect();
   const { reconnect } = useReconnect();
 
-  // Auto-reconnect when page becomes visible (user returns from wallet app)
+  // Auto-reconnect when page becomes visible or focused (user returns from wallet app)
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && !isConnected && !isConnecting) {
-        // Try to reconnect when user comes back to the Mini App
+    const tryReconnect = () => {
+      if (!isConnected && !isConnecting && !isReconnecting) {
         reconnect();
       }
     };
 
+    // Reconnect when page becomes visible
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // Small delay to let wagmi restore from storage first
+        setTimeout(tryReconnect, 300);
+      }
+    };
+
+    // Reconnect when window is focused
+    const handleFocus = () => {
+      setTimeout(tryReconnect, 300);
+    };
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [isConnected, isConnecting, reconnect]);
+    window.addEventListener('focus', handleFocus);
+
+    // Also try reconnect on mount (for page reload after wallet redirect)
+    tryReconnect();
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [isConnected, isConnecting, isReconnecting, reconnect]);
 
   const selectedChains = useScanStore((s) => s.selectedChains);
   const approvals = useScanStore((s) => s.approvals);
