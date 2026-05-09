@@ -6,38 +6,53 @@ interface SplashScreenProps {
 
 export default function SplashScreen({ onGetStarted }: SplashScreenProps) {
   return (
-    <div className="fixed inset-0 bg-[#0F0F0F] flex flex-col items-center justify-center px-6 z-50">
-      {/* Purple glow */}
-      <div className="absolute top-1/4 w-64 h-64 bg-purple-600/20 rounded-full blur-[100px]" />
-      <div className="absolute top-1/3 w-40 h-40 bg-purple-500/15 rounded-full blur-[60px]" />
+    <div className="fixed inset-0 bg-brand-dark flex flex-col items-center justify-center px-6 z-50">
+      {/* Gradient orbs */}
+      <div className="absolute top-1/4 left-1/4 w-48 h-48 bg-brand-red/15 rounded-full blur-[80px] animate-pulse-dot" />
+      <div className="absolute top-1/3 right-1/4 w-40 h-40 bg-brand-blue/15 rounded-full blur-[60px] animate-pulse-dot" style={{ animationDelay: '0.5s' }} />
+      <div className="absolute bottom-1/3 left-1/2 w-36 h-36 bg-brand-yellow/10 rounded-full blur-[70px] animate-pulse-dot" style={{ animationDelay: '1s' }} />
 
-      <div className="relative flex flex-col items-center text-center">
-        <div className="mb-6 p-5 rounded-2xl bg-purple-600/10 border border-purple-500/20">
-          <ShieldCheck className="w-16 h-16 text-purple-500" strokeWidth={1.5} />
+      <div className="relative flex flex-col items-center text-center animate-fade-in">
+        {/* Icon */}
+        <div className="mb-8 p-5 rounded-2xl bg-brand-blue/10 border border-brand-blue/20">
+          <ShieldCheck className="w-16 h-16 text-brand-blue" strokeWidth={1.5} />
         </div>
 
-        <h1 className="text-3xl font-bold text-white tracking-tight mb-2">
-          revokemywallet
+        {/* Title */}
+        <h1 className="text-4xl font-extrabold tracking-tight mb-3">
+          <span className="text-white">revoke</span>
+          <span className="text-brand-blue">my</span>
+          <span className="text-brand-red">wallet</span>
         </h1>
 
-        <p className="text-gray-400 text-sm mb-8 max-w-[280px]">
-          Safe Revoke • Powered by{' '}
-          <span className="text-purple-400">@revokemywalletbot</span> by luke
+        <p className="text-gray-500 text-sm mb-10 tracking-wide">
+          Safe Revoke • Batch Multicall3
         </p>
 
-        <div className="bg-[#1A1A1A] border border-gray-800 rounded-xl p-4 mb-10 max-w-[320px]">
-          <p className="text-gray-400 text-xs leading-relaxed">
-            🔒 revokemywallet never stores your private key. All transactions are
-            signed locally in your wallet.
-          </p>
+        {/* Features */}
+        <div className="w-full max-w-[320px] space-y-3 mb-10">
+          {[
+            { icon: '🔒', text: 'Never stores your private key', color: 'text-brand-blue' },
+            { icon: '⚡', text: 'Batch revoke via Multicall3', color: 'text-brand-yellow' },
+            { icon: '🌐', text: '8 EVM chains supported', color: 'text-brand-red' },
+          ].map((item, i) => (
+            <div key={i} className={`flex items-center gap-3 px-4 py-3 rounded-xl bg-brand-surface border border-white/5 animate-slide-up stagger-${i + 1}`}>
+              <span className="text-lg">{item.icon}</span>
+              <span className="text-gray-300 text-sm">{item.text}</span>
+            </div>
+          ))}
         </div>
 
         <button
           onClick={onGetStarted}
-          className="w-full max-w-[300px] py-3.5 px-6 bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white font-semibold rounded-xl transition-colors"
+          className="w-full max-w-[300px] py-4 px-6 bg-brand-blue hover:bg-brand-blue/90 active:scale-[0.98] text-white font-semibold rounded-pill transition-all duration-200"
         >
           Get Started
         </button>
+
+        <p className="text-gray-600 text-xs mt-6">
+          by <span className="text-gray-500">@redmart09</span>
+        </p>
       </div>
     </div>
   );

@@ -20,18 +20,18 @@ export default function ChainSelector() {
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 animate-fade-in">
       <div className="flex items-center justify-between px-1">
-        <h3 className="text-white text-sm font-medium">Select Chains</h3>
+        <h3 className="text-white text-sm font-semibold tracking-tight">Chains</h3>
         <button
           onClick={toggleAll}
-          className={`text-xs px-3 py-1 rounded-full transition-colors ${
+          className={`text-xs px-3 py-1.5 rounded-pill font-medium transition-all duration-200 ${
             isAll
-              ? 'bg-purple-600 text-white'
-              : 'bg-[#1A1A1A] text-gray-400 border border-gray-700'
+              ? 'bg-brand-blue text-white'
+              : 'bg-brand-surface text-gray-500 border border-white/5 hover:border-white/10'
           }`}
         >
-          All Chains
+          {isAll ? 'All Selected' : 'Select All'}
         </button>
       </div>
       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
@@ -41,13 +41,14 @@ export default function ChainSelector() {
             <button
               key={chain.id}
               onClick={() => toggleChain(chain.id)}
-              className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`flex-shrink-0 flex items-center gap-1.5 px-3.5 py-2.5 rounded-pill text-xs font-semibold transition-all duration-200 active:scale-95 ${
                 selected
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-[#1A1A1A] text-gray-400 border border-gray-700'
+                  ? 'text-white shadow-lg'
+                  : 'bg-brand-surface text-gray-500 border border-white/5 hover:border-white/10'
               }`}
+              style={selected ? { backgroundColor: chain.color + '30', border: `1px solid ${chain.color}50`, color: chain.color } : undefined}
             >
-              <span>{chain.emoji}</span>
+              <span className="text-sm">{chain.emoji}</span>
               <span>{chain.name}</span>
             </button>
           );

@@ -1,4 +1,4 @@
-import { X, AlertTriangle, Loader2 } from 'lucide-react';
+import { X, AlertTriangle, Loader2, Zap } from 'lucide-react';
 import type { Approval } from '../types';
 import { SUPPORTED_CHAINS, truncateAddress } from '../types';
 
@@ -39,66 +39,70 @@ export default function ConfirmModal({
   const chainCount = Object.keys(grouped).length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60" onClick={isRevoking ? undefined : onClose} />
-      <div className="relative bg-[#1A1A1A] rounded-2xl border border-gray-800 w-full max-w-sm max-h-[80vh] flex flex-col">
-        <div className="flex items-center justify-between p-4 border-b border-gray-800">
-          <h3 className="text-white text-lg font-bold">
-            {isRevoking ? 'Revoking...' : 'Are you sure?'}
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={isRevoking ? undefined : onClose} />
+      <div className="relative bg-brand-surface rounded-t-2xl sm:rounded-2xl border border-white/5 w-full max-w-sm max-h-[85vh] flex flex-col animate-slide-up">
+        {/* Header */}
+        <div className="flex items-center justify-between p-5 border-b border-white/5">
+          <h3 className="text-white text-lg font-bold tracking-tight">
+            {isRevoking ? 'Revoking…' : 'Confirm Revoke'}
           </h3>
           {!isRevoking && (
-            <button onClick={onClose} className="text-gray-500 hover:text-white">
+            <button onClick={onClose} className="text-gray-600 hover:text-white transition-colors">
               <X className="w-5 h-5" />
             </button>
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {/* Batch progress bar */}
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          {/* Batch progress */}
           {isRevoking && batchProgress && batchProgress.total > 0 && (
-            <div className="bg-purple-600/10 border border-purple-600/30 rounded-xl p-3">
-              <div className="flex items-center gap-2 mb-2">
-                <Loader2 className="w-4 h-4 text-purple-400 animate-spin" />
-                <span className="text-purple-300 text-sm font-medium">
+            <div className="bg-brand-blue/5 border border-brand-blue/15 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Loader2 className="w-4 h-4 text-brand-blue animate-spin" />
+                <span className="text-brand-blue text-sm font-semibold">
                   Chain {batchProgress.current}/{batchProgress.total}
                   {batchProgress.currentChain && ` — ${batchProgress.currentChain}`}
                 </span>
               </div>
-              <div className="w-full bg-gray-800 rounded-full h-2">
+              <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
                 <div
-                  className="bg-purple-500 h-2 rounded-full transition-all duration-500"
+                  className="bg-brand-blue h-1.5 rounded-full transition-all duration-700 ease-out"
                   style={{ width: `${(batchProgress.current / batchProgress.total) * 100}%` }}
                 />
               </div>
-              <p className="text-gray-500 text-xs mt-2">
-                {chainCount > 1
-                  ? `${approvals.length} approvals across ${chainCount} chains — 1 tx per chain via Multicall3`
-                  : `${approvals.length} approvals — batched into 1 transaction`}
-              </p>
             </div>
           )}
 
+          {/* Chain groups */}
           {Object.entries(grouped).map(([chainIdStr, items]) => {
             const chainId = Number(chainIdStr);
             const chain = SUPPORTED_CHAINS.find((c) => c.id === chainId);
             return (
               <div key={chainId}>
-                <p className="text-gray-400 text-xs font-medium mb-2">
-                  {chain?.emoji} {chain?.name} ({items.length})
-                </p>
+                <div className="flex items-center gap-2 mb-2">
+                  <span
+                    className="w-1.5 h-1.5 rounded-full"
+                    style={{ backgroundColor: chain?.color ?? '#666' }}
+                  />
+                  <p className="text-gray-500 text-xs font-semibold uppercase tracking-wider">
+                    {chain?.emoji} {chain?.name} ({items.length})
+                  </p>
+                </div>
                 <div className="space-y-1.5">
                   {items.map((a, i) => (
                     <div
                       key={i}
-                      className="flex items-center justify-between bg-[#0F0F0F] rounded-lg px-3 py-2"
+                      className="flex items-center justify-between bg-brand-dark rounded-lg px-3 py-2"
                     >
-                      <div>
-                        <span className="text-white text-sm">{a.tokenSymbol}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-white text-sm font-medium">{a.tokenSymbol}</span>
                         {a.isUnlimited && (
-                          <AlertTriangle className="w-3 h-3 text-orange-500 inline ml-1" />
+                          <AlertTriangle className="w-3 h-3 text-brand-red" />
                         )}
                       </div>
-                      <span className="text-gray-500 text-xs font-mono">
+                      <span className="text-gray-600 text-xs font-mono">
                         {truncateAddress(a.spender)}
                       </span>
                     </div>
@@ -108,46 +112,51 @@ export default function ConfirmModal({
             );
           })}
 
+          {/* Info box */}
           {!isRevoking && (
-            <div className="bg-purple-600/10 border border-purple-600/20 rounded-xl p-3">
-              <p className="text-purple-300 text-xs">
+            <div className="bg-brand-yellow/5 border border-brand-yellow/15 rounded-xl p-3">
+              <p className="text-brand-yellow/80 text-xs font-medium">
                 ⚡ {chainCount > 1
-                  ? `Will batch into ${chainCount} transactions (1 per chain) via Multicall3`
-                  : `Will batch ${approvals.length} approvals into 1 transaction via Multicall3`}
+                  ? `${chainCount} transactions via Multicall3 (1 per chain)`
+                  : `Batched into 1 transaction via Multicall3`}
               </p>
             </div>
           )}
 
           {estimatedGas && (
-            <div className="bg-[#0F0F0F] rounded-xl p-3 border border-gray-800">
+            <div className="bg-brand-dark rounded-xl p-3 border border-white/5">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Estimated Gas</span>
-                <span className="text-white">~{estimatedGas} {nativeCurrency}</span>
+                <span className="text-gray-600">Estimated Gas</span>
+                <span className="text-white font-medium">~{estimatedGas} {nativeCurrency}</span>
               </div>
             </div>
           )}
         </div>
 
-        <div className="p-4 border-t border-gray-800 flex gap-3">
+        {/* Footer */}
+        <div className="p-5 border-t border-white/5 flex gap-3">
           <button
             onClick={onClose}
             disabled={isRevoking}
-            className="flex-1 py-2.5 px-4 bg-[#0F0F0F] text-gray-300 rounded-xl border border-gray-700 font-medium text-sm disabled:opacity-40"
+            className="flex-1 py-3 px-4 bg-brand-dark text-gray-400 rounded-xl border border-white/5 font-semibold text-sm disabled:opacity-40 hover:border-white/10 transition-all"
           >
             Cancel
           </button>
           <button
             onClick={onConfirm}
             disabled={isRevoking}
-            className="flex-1 py-2.5 px-4 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-medium text-sm disabled:opacity-60 flex items-center justify-center gap-2"
+            className="flex-1 py-3 px-4 bg-brand-red hover:bg-brand-red/90 text-white rounded-xl font-semibold text-sm disabled:opacity-50 flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
           >
             {isRevoking ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Revoking...</span>
+                <span>Revoking…</span>
               </>
             ) : (
-              <span>⚡ Batch Revoke</span>
+              <>
+                <Zap className="w-4 h-4" />
+                <span>Revoke</span>
+              </>
             )}
           </button>
         </div>

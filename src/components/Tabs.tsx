@@ -14,7 +14,7 @@ const tabs: { id: TabId; label: string; icon: typeof ListChecks }[] = [
 
 export default function Tabs({ activeTab, onTabChange }: TabsProps) {
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-30 bg-[#0F0F0F]/95 backdrop-blur-sm border-t border-gray-800 safe-area-bottom">
+    <div className="fixed bottom-0 left-0 right-0 z-30 bg-brand-dark/95 backdrop-blur-md border-t border-white/5 safe-area-bottom">
       <div className="flex">
         {tabs.map((tab) => {
           const Icon = tab.icon;
@@ -23,15 +23,17 @@ export default function Tabs({ activeTab, onTabChange }: TabsProps) {
             <button
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
-              className={`relative flex-1 flex flex-col items-center gap-1 py-3 transition-colors ${
-                active ? 'text-purple-500' : 'text-gray-500'
+              className={`relative flex-1 flex flex-col items-center gap-1 py-3.5 transition-all duration-200 ${
+                active ? 'text-brand-blue' : 'text-gray-600'
               }`}
             >
               {active && (
-                <div className="w-8 h-0.5 bg-purple-500 rounded-full absolute top-0" />
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-brand-blue rounded-full" />
               )}
-              <Icon className="w-5 h-5" />
-              <span className="text-xs font-medium">{tab.label}</span>
+              <Icon className="w-5 h-5" strokeWidth={active ? 2.5 : 2} />
+              <span className={`text-[11px] font-semibold tracking-wide ${active ? 'text-brand-blue' : 'text-gray-600'}`}>
+                {tab.label}
+              </span>
             </button>
           );
         })}

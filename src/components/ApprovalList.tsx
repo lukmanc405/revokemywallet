@@ -11,24 +11,38 @@ interface ApprovalListProps {
 export default function ApprovalList({ onRevoke, revokingKeys }: ApprovalListProps) {
   const approvals = useScanStore((s) => s.approvals);
   const selectedApprovals = useScanStore((s) => s.selectedApprovals);
+  const selectedChains = useScanStore((s) => s.selectedChains);
   const selectAll = useScanStore((s) => s.selectAll);
+
+  // Filter: only show approvals for selected chains
+  const allChainIds = SUPPORTED_CHAINS.map((c) => c.id);
+  const isAll = selectedChains.length === 0 || selectedChains.length === allChainIds.length;
 
   const chainIds = Object.keys(approvals ?? {})
     .map(Number)
-    .filter((id) => (approvals ?? {})[id]?.length > 0);
+    .filter((id) => {
+      const hasApprovals = (approvals ?? {})[id]?.length > 0;
+      if (!hasApprovals) return false;
+      // If all chains selected or none selected, show all
+      if (isAll) return true;
+      // Otherwise only show selected chains
+      return selectedChains.includes(id);
+    });
 
   if (chainIds.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
-        <ShieldCheck className="w-12 h-12 text-gray-600 mb-3" />
-        <p className="text-gray-500 text-sm">No approvals found</p>
-        <p className="text-gray-600 text-xs mt-1">Connect your wallet and scan to find token approvals</p>
+      <div className="flex flex-col items-center justify-center py-16 text-center animate-fade-in">
+        <div className="p-4 rounded-2xl bg-brand-surface border border-white/5 mb-4">
+          <ShieldCheck className="w-10 h-10 text-gray-700" />
+        </div>
+        <p className="text-gray-500 text-sm font-medium">No approvals found</p>
+        <p className="text-gray-700 text-xs mt-1">Connect wallet and scan to find token approvals</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       {chainIds.map((chainId) => {
         const chain = SUPPORTED_CHAINS.find((c) => c.id === chainId);
         const items = approvals[chainId] ?? [];
@@ -37,24 +51,27 @@ export default function ApprovalList({ onRevoke, revokingKeys }: ApprovalListPro
         );
 
         return (
-          <div key={chainId}>
-            <div className="flex items-center justify-between mb-2 px-1">
+          <div key={chainId} className="animate-slide-up">
+            <div className="flex items-center justify-between mb-2.5 px-1">
               <div className="flex items-center gap-2">
-                <span className="text-white font-medium text-sm">
+                <span
+                  className="inline-block w-2 h-2 rounded-full"
+                  style={{ backgroundColor: chain?.color ?? '#666' }}
+                />
+                <span className="text-white font-semibold text-sm">
                   {chain?.emoji} {chain?.name ?? `Chain ${chainId}`}
                 </span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-600/20 text-purple-400">
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-gray-500 font-medium">
                   {items.length}
                 </span>
               </div>
-              <label className="flex items-center gap-1.5 text-xs text-gray-400 cursor-pointer">
+              <label className="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={allSelected}
                   onChange={() => selectAll(chainId)}
-                  className="w-3.5 h-3.5 accent-purple-600 rounded"
                 />
-                Select All
+                <span className="font-medium">All</span>
               </label>
             </div>
             <div className="space-y-2">

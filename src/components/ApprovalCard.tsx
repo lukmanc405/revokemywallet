@@ -14,64 +14,71 @@ export default function ApprovalCard({ approval, onRevoke, isRevoking }: Approva
   const isSelected = selectedApprovals.has(key);
   const chain = SUPPORTED_CHAINS.find((c) => c.id === approval.chainId);
 
-  const typeColor =
+  const typeBadge =
     approval.tokenType === 'ERC20'
-      ? 'bg-blue-500/20 text-blue-400'
+      ? { bg: 'bg-brand-blue/10', text: 'text-brand-blue', border: 'border-brand-blue/20' }
       : approval.tokenType === 'ERC721'
-        ? 'bg-green-500/20 text-green-400'
-        : 'bg-orange-500/20 text-orange-400';
+        ? { bg: 'bg-green-500/10', text: 'text-green-400', border: 'border-green-500/20' }
+        : { bg: 'bg-brand-yellow/10', text: 'text-brand-yellow', border: 'border-brand-yellow/20' };
 
   return (
     <div
-      className={`flex items-start gap-3 p-3 rounded-xl border transition-colors ${
+      className={`group flex items-start gap-3 p-3.5 rounded-xl border transition-all duration-200 animate-fade-in ${
         isSelected
-          ? 'bg-purple-600/10 border-purple-500/30'
-          : 'bg-[#1A1A1A] border-gray-800'
+          ? 'bg-brand-blue/5 border-brand-blue/25'
+          : 'bg-brand-surface border-white/5 hover:border-white/10'
       }`}
     >
       <input
         type="checkbox"
         checked={isSelected}
         onChange={() => toggleSelection(key)}
-        className="mt-1 w-4 h-4 accent-purple-600 rounded"
+        className="mt-0.5"
       />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-white font-medium text-sm truncate">
+          <span className="text-white font-semibold text-sm truncate">
             {approval.tokenName}
           </span>
-          <span className="text-gray-500 text-xs">({approval.tokenSymbol})</span>
-          <span className={`text-[10px] px-1.5 py-0.5 rounded ${typeColor}`}>
+          <span className="text-gray-600 text-xs font-mono">{approval.tokenSymbol}</span>
+          <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium border ${typeBadge.bg} ${typeBadge.text} ${typeBadge.border}`}>
             {approval.tokenType}
           </span>
           {approval.possibleSpam && (
-            <Siren className="w-3.5 h-3.5 text-yellow-500" />
+            <Siren className="w-3.5 h-3.5 text-brand-yellow" />
           )}
           {approval.isUnlimited && (
-            <AlertTriangle className="w-3.5 h-3.5 text-orange-500" />
+            <AlertTriangle className="w-3.5 h-3.5 text-brand-red" />
           )}
         </div>
-        <div className="flex items-center gap-2 mt-1">
-          <span className="text-gray-500 text-xs">
-            Spender: <span className="font-mono text-gray-400">{truncateAddress(approval.spender)}</span>
+        <div className="flex items-center gap-2 mt-1.5">
+          <span className="text-gray-600 text-xs">
+            → <span className="font-mono text-gray-500">{truncateAddress(approval.spender)}</span>
           </span>
           {chain && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#0F0F0F] text-gray-400 border border-gray-700">
+            <span
+              className="text-[10px] px-1.5 py-0.5 rounded-md font-medium border"
+              style={{
+                backgroundColor: chain.color + '10',
+                borderColor: chain.color + '25',
+                color: chain.color,
+              }}
+            >
               {chain.emoji} {chain.name}
             </span>
           )}
         </div>
         {approval.isUnlimited && (
-          <p className="text-orange-400/80 text-[11px] mt-1">⚠️ Unlimited approval</p>
+          <p className="text-brand-red/70 text-[11px] mt-1.5 font-medium">Unlimited approval</p>
         )}
       </div>
       {onRevoke && (
         <button
           onClick={() => onRevoke(approval)}
           disabled={isRevoking}
-          className="flex-shrink-0 px-3 py-1.5 text-xs font-medium bg-red-600/20 text-red-400 hover:bg-red-600/30 rounded-lg transition-colors disabled:opacity-50"
+          className="flex-shrink-0 px-3 py-1.5 text-xs font-semibold bg-brand-red/10 text-brand-red border border-brand-red/20 hover:bg-brand-red/20 rounded-lg transition-all duration-200 disabled:opacity-50"
         >
-          {isRevoking ? '...' : 'Revoke'}
+          {isRevoking ? '…' : 'Revoke'}
         </button>
       )}
     </div>

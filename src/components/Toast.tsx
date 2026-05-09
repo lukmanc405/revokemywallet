@@ -7,17 +7,20 @@ export function AppToaster() {
       position="top-center"
       toastOptions={{
         style: {
-          background: '#1A1A1A',
+          background: '#1E1E1E',
           color: '#fff',
-          border: '1px solid #2a2a2a',
-          borderRadius: '12px',
-          fontSize: '14px',
+          border: '1px solid rgba(255,255,255,0.06)',
+          borderRadius: '16px',
+          fontSize: '13px',
+          fontFamily: 'Inter, system-ui, sans-serif',
+          fontWeight: '500',
+          padding: '12px 16px',
         },
         success: {
-          iconTheme: { primary: '#22c55e', secondary: '#1A1A1A' },
+          iconTheme: { primary: '#22c55e', secondary: '#1E1E1E' },
         },
         error: {
-          iconTheme: { primary: '#ef4444', secondary: '#1A1A1A' },
+          iconTheme: { primary: '#FF3B30', secondary: '#1E1E1E' },
         },
       }}
     />
@@ -31,10 +34,10 @@ export const showSuccess = (message: string) =>
 
 export const showError = (message: string) =>
   toast.error(message, {
-    icon: <XCircle className="w-5 h-5 text-red-500" />,
+    icon: <XCircle className="w-5 h-5 text-brand-red" />,
   });
 
 export const showWarning = (message: string) =>
   toast(message, {
-    icon: <AlertTriangle className="w-5 h-5 text-yellow-500" />,
+    icon: <AlertTriangle className="w-5 h-5 text-brand-yellow" />,
   });

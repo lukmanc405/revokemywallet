@@ -1,5 +1,4 @@
 import { useCallback, useState } from 'react';
-import { useSwitchChain } from 'wagmi';
 import { getWalletClient } from 'wagmi/actions';
 import { parseAbi, encodeFunctionData, isAddress } from 'viem';
 import { useQueryClient } from '@tanstack/react-query';
@@ -105,7 +104,6 @@ async function getClientForChain(chainId: number) {
 }
 
 export function useRevoke() {
-  const { switchChainAsync } = useSwitchChain();
   const queryClient = useQueryClient();
 
   const [currentTxHash, setCurrentTxHash] = useState<`0x${string}` | undefined>();
