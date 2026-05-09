@@ -1,5 +1,5 @@
-import { useState, useRef, useCallback, useMemo } from 'react';
-import { useAccount, useDisconnect } from 'wagmi';
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
+import { useAccount, useDisconnect, useReconnect } from 'wagmi';
 import type { Approval } from './types';
 import { SUPPORTED_CHAINS, getApprovalKey, getExplorerTxUrl, truncateAddress } from './types';
 import { useScanStore } from './stores/scanStore';
@@ -54,6 +54,20 @@ export default function App() {
   // Use wagmi's useAccount as the SINGLE source of truth for wallet state
   const { address, isConnected, isConnecting, isReconnecting } = useAccount();
   const { disconnect } = useDisconnect();
+  const { reconnect } = useReconnect();
+
+  // Auto-reconnect when page becomes visible (user returns from wallet app)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && !isConnected && !isConnecting) {
+        // Try to reconnect when user comes back to the Mini App
+        reconnect();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [isConnected, isConnecting, reconnect]);
 
   const selectedChains = useScanStore((s) => s.selectedChains);
   const approvals = useScanStore((s) => s.approvals);

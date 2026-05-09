@@ -11,6 +11,7 @@ import {
   polygon,
   zkSync,
 } from 'viem/chains';
+import { cookieStorage, createStorage } from 'wagmi';
 
 const projectId = import.meta.env.VITE_REOWN_PROJECT_ID as string;
 
@@ -29,9 +30,17 @@ export const networks: [AppKitNetwork, ...AppKitNetwork[]] = [
   zkSync,
 ];
 
+// Use cookie + localStorage for better persistence in Telegram WebView
+const storage = createStorage({
+  storage: typeof window !== 'undefined' ? localStorage : cookieStorage,
+  key: 'revokemywallet-wagmi',
+});
+
 export const wagmiAdapter = new WagmiAdapter({
   networks,
   projectId,
+  ssr: false,
+  storage,
 });
 
 export const appKit = createAppKit({
@@ -41,7 +50,7 @@ export const appKit = createAppKit({
   metadata: {
     name: 'RevokeMyWallet',
     description: 'Revoke token approvals across EVM chains',
-    url: 'https://revokemywallet.app',
+    url: typeof window !== 'undefined' ? window.location.origin : 'https://revokemywallet.app',
     icons: ['https://revokemywallet.app/icon.png'],
   },
   themeMode: 'dark',
@@ -52,6 +61,8 @@ export const appKit = createAppKit({
   enableWalletConnect: true,
   enableInjected: true,
   enableEIP6963: true,
+  // Important for Telegram Mini Apps — reconnect on page visibility change
+  featuredWalletIds: [],
 });
 
 export const wagmiConfig = wagmiAdapter.wagmiConfig;
