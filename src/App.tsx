@@ -82,7 +82,7 @@ export default function App() {
   const setScanProgress = useScanStore((s) => s.setScanProgress);
   const addHistory = useHistoryStore((s) => s.addHistory);
   const { sendToBot, haptic, hapticImpact } = useTelegramWebApp();
-  const { revokeBatch, isBatchProcessing } = useRevoke();
+  const { revokeBatch, isBatchProcessing, batchProgress } = useRevoke();
 
   // Map from approval key → raw ApprovalEntry for revoke operations
   const entryMapRef = useRef<Map<string, ApprovalEntry>>(new Map());
@@ -175,6 +175,26 @@ export default function App() {
     if (entriesToRevoke.length === 0) {
       showError('No valid approvals to revoke');
       return;
+    }
+
+    // Debug: log what we're about to revoke
+    if (import.meta.env.DEV) console.log('[Revoke] Selected approvals:', entriesToRevoke.length);
+    if (import.meta.env.DEV) console.log('[Revoke] Entries:', entriesToRevoke.map(e => ({
+      chain: e.chainId,
+      token: e.token_symbol,
+      spender: e.approved_address.slice(0, 10),
+      type: e.token_type,
+    })));
+
+    // Group by chain to show what will happen
+    const byChain = new Map<number, ApprovalEntry[]>();
+    for (const entry of entriesToRevoke) {
+      const existing = byChain.get(entry.chainId) ?? [];
+      existing.push(entry);
+      byChain.set(entry.chainId, existing);
+    }
+    for (const [chainId, chainEntries] of byChain) {
+      if (import.meta.env.DEV) console.log(`[Revoke] Chain ${chainId}: ${chainEntries.length} approvals → ${chainEntries.length > 1 ? 'Multicall3 batch' : 'direct call'}`);
     }
 
     try {
@@ -342,6 +362,7 @@ export default function App() {
         onConfirm={handleConfirmRevoke}
         approvals={selectedApprovalList}
         isRevoking={isBatchProcessing}
+        batchProgress={batchProgress}
       />
 
       <GasWarningModal
