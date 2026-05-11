@@ -46,8 +46,8 @@ export const appKit = createAppKit({
   metadata: {
     name: 'RevokeMyWallet',
     description: 'Revoke token approvals across EVM chains',
-    url: typeof window !== 'undefined' ? window.location.origin : 'https://revokemywallet.app',
-    icons: ['https://revokemywallet.app/icon.png'],
+    url: 'https://lukmanc405.github.io/revokemywallet/',
+    icons: ['https://lukmanc405.github.io/revokemywallet/favicon.svg'],
   },
   themeMode: 'dark',
   themeVariables: {
